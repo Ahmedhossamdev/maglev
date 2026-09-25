@@ -80,8 +80,7 @@ func (api *RestAPI) stopsForAgencyHandler(w http.ResponseWriter, r *http.Request
 		api.appendRouteAgencyReference(ctx, references, route.AgencyID, id)
 	}
 
-	api.attachOnDemandPointers(nil, stopsList)
-	api.attachOnDemandPointersToReferences(references)
+	api.attachStopListOnDemandIDs(stopsList, references)
 	response := models.NewListResponse(stopsList, *references, false, api.Clock)
 	api.sendResponse(w, r, response)
 }
