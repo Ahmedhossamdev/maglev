@@ -2317,3 +2317,10 @@ func TestBuildTripSchedule_ShapeLookupFailureLogsAndContinues(t *testing.T) {
 	assert.Contains(t, logBuf.String(), tripRow.ID)
 	assert.Contains(t, logBuf.String(), "forced shape lookup failure")
 }
+
+func TestIsFlexOnlyTrip(t *testing.T) {
+	timed := gtfsdb.Trip{ID: "timed", MinArrivalTime: sql.NullInt64{Int64: int64(8 * time.Hour), Valid: true}}
+	flexOnly := gtfsdb.Trip{ID: "flex"}
+	assert.False(t, isFlexOnlyTrip(&timed))
+	assert.True(t, isFlexOnlyTrip(&flexOnly))
+}
