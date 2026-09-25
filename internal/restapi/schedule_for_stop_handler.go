@@ -264,6 +264,7 @@ func (api *RestAPI) scheduleForStopHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Create and send response
+	api.attachOnDemandPointersToReferences(references)
 	response := models.NewEntryResponse(entry, *references, api.Clock)
 	api.sendResponse(w, r, response)
 }

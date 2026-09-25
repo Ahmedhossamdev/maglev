@@ -86,6 +86,7 @@ func (api *RestAPI) scheduleForRouteHandler(w http.ResponseWriter, r *http.Reque
 		route.Url.String,
 		route.Color.String,
 		route.TextColor.String)
+	api.attachRouteOnDemandIDs(&routeModel)
 
 	serviceIDs, err := api.GtfsManager.GtfsDB.Queries.GetActiveServiceIDsForDate(ctx, targetDate)
 	if err != nil {
@@ -336,6 +337,7 @@ func (api *RestAPI) scheduleForRouteHandler(w http.ResponseWriter, r *http.Reque
 		ServiceIDs:        combinedServiceIDs,
 		StopTripGroupings: stopTripGroupings,
 	}
+	api.attachOnDemandPointersToReferences(references)
 	api.sendResponse(w, r, models.NewEntryResponse(entry, *references, api.Clock))
 }
 
