@@ -20,6 +20,10 @@ permissions:
   contents: read
   pull-requests: write
 
+env:
+  FOLLOWS_LABEL: follows-template
+  FOLLOWS_LABEL_COLOR: 0E8A16
+
 concurrency:
   group: pr-template-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -28,6 +32,10 @@ jobs:
   check:
     name: PR template
     runs-on: ubuntu-latest
+    # Every event reruns the full check, label changes included: a skipped
+    # run would replace a failing check with "skipped", which counts as
+    # passing. The follows-template label set below can't loop, because
+    # changes made with GITHUB_TOKEN don't trigger workflows.
     if: >-
       github.repository == 'OneBusAway/maglev' &&
       github.event.pull_request.user.type != 'Bot' &&
@@ -82,6 +90,27 @@ jobs:
             gh api -X PATCH "repos/$REPO/issues/comments/$comment_id" -F body=@"$RUNNER_TEMP/report.md" > /dev/null
           elif [ "$EXIT_CODE" = "1" ]; then
             gh api -X POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@"$RUNNER_TEMP/report.md" > /dev/null
+          fi
+
+      - name: Update the follows-template label
+        if: steps.check.outputs.exit_code == '0' || steps.check.outputs.exit_code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXIT_CODE: ${{ steps.check.outputs.exit_code }}
+        run: |
+          has_label=$(jq --arg label "$FOLLOWS_LABEL" '[.pull_request.labels[].name] | index($label) != null' "$GITHUB_EVENT_PATH")
+          if [ "$EXIT_CODE" = "0" ] && [ "$has_label" = "false" ]; then
+            # Create the label green on first use; adding a missing label
+            # would otherwise create it in GitHub's default gray.
+            if ! gh api "repos/$REPO/labels/$FOLLOWS_LABEL" > /dev/null 2>&1; then
+              gh api -X POST "repos/$REPO/labels" -f "name=$FOLLOWS_LABEL" -f "color=$FOLLOWS_LABEL_COLOR" \
+                -f "description=The PR description follows the PR template" > /dev/null
+            fi
+            gh api -X POST "repos/$REPO/issues/$PR_NUMBER/labels" -f "labels[]=$FOLLOWS_LABEL" > /dev/null
+          elif [ "$EXIT_CODE" = "1" ] && [ "$has_label" = "true" ]; then
+            gh api -X DELETE "repos/$REPO/issues/$PR_NUMBER/labels/$FOLLOWS_LABEL" > /dev/null
           fi
 
       - name: Fail if the description doesn't follow the template
