@@ -20,6 +20,9 @@ permissions:
   contents: read
   pull-requests: write
 
+env:
+  FOLLOWS_LABEL: follows-template
+
 concurrency:
   group: pr-template-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -28,10 +31,14 @@ jobs:
   check:
     name: PR template
     runs-on: ubuntu-latest
+    # Label changes only matter for the skip label; reacting to others would
+    # rerun the check every time it sets its own label.
     if: >-
       github.repository == 'OneBusAway/maglev' &&
       github.event.pull_request.user.type != 'Bot' &&
-      !contains(github.event.pull_request.labels.*.name, 'skip-template-check')
+      !contains(github.event.pull_request.labels.*.name, 'skip-template-check') &&
+      (!contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) ||
+       github.event.label.name == 'skip-template-check')
     steps:
       - uses: actions/checkout@v7
         with:
@@ -82,6 +89,21 @@ jobs:
             gh api -X PATCH "repos/$REPO/issues/comments/$comment_id" -F body=@"$RUNNER_TEMP/report.md" > /dev/null
           elif [ "$EXIT_CODE" = "1" ]; then
             gh api -X POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@"$RUNNER_TEMP/report.md" > /dev/null
+          fi
+
+      - name: Update the follows-template label
+        if: steps.check.outputs.exit_code == '0' || steps.check.outputs.exit_code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXIT_CODE: ${{ steps.check.outputs.exit_code }}
+        run: |
+          has_label=$(jq --arg label "$FOLLOWS_LABEL" '[.pull_request.labels[].name] | index($label) != null' "$GITHUB_EVENT_PATH")
+          if [ "$EXIT_CODE" = "0" ] && [ "$has_label" = "false" ]; then
+            gh api -X POST "repos/$REPO/issues/$PR_NUMBER/labels" -f "labels[]=$FOLLOWS_LABEL" > /dev/null
+          elif [ "$EXIT_CODE" = "1" ] && [ "$has_label" = "true" ]; then
+            gh api -X DELETE "repos/$REPO/issues/$PR_NUMBER/labels/$FOLLOWS_LABEL" > /dev/null
           fi
 
       - name: Fail if the description doesn't follow the template
