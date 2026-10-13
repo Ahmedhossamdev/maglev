@@ -34,7 +34,7 @@ jobs:
     # Label changes only matter for the skip label; reacting to others would
     # rerun the check every time it sets its own label.
     if: >-
-      github.repository == 'OneBusAway/maglev' &&
+      github.repository == 'Ahmedhossamdev/maglev' &&
       github.event.pull_request.user.type != 'Bot' &&
       !contains(github.event.pull_request.labels.*.name, 'skip-template-check') &&
       (!contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) ||
