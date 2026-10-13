@@ -37,7 +37,7 @@ jobs:
     # passing. The follows-template label set below can't loop, because
     # changes made with GITHUB_TOKEN don't trigger workflows.
     if: >-
-      github.repository == 'OneBusAway/maglev' &&
+      github.repository == 'Ahmedhossamdev/maglev' &&
       github.event.pull_request.user.type != 'Bot' &&
       !contains(github.event.pull_request.labels.*.name, 'skip-template-check')
     steps:
